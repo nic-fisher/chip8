@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use crate::instruction::Instruction;
 
 pub struct CPU {
@@ -15,7 +17,7 @@ pub struct CPU {
 
 impl CPU {
     pub fn new() -> CPU {
-        CPU {
+        let mut cpu = CPU {
             memory: [0; 4096],
             registers: [0; 16],
             index: 0,
@@ -26,6 +28,35 @@ impl CPU {
             sound_timer: 0,
             keys: [false; 16],
             display: [false; 64 * 32],
+        };
+
+        cpu.load_fonts();
+        cpu
+    }
+
+    fn load_fonts(&mut self) {
+        // Fonts should be loaded from 0x50
+        let fonts = [
+            0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+            0x20, 0x60, 0x20, 0x20, 0x70, // 1
+            0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+            0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+            0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+            0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+            0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+            0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+            0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+            0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+            0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+            0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+            0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+            0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+            0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+            0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+        ];
+
+        for (i, font) in fonts.iter().enumerate() {
+            self.memory[0x50 + i] = *font;
         }
     }
 
@@ -49,33 +80,35 @@ impl CPU {
 
             0x01 => {
                 // Jump to location nnn
-                unimplemented!()
+                println!("Jump to location: #{}", i.nnn);
+                self.pc = i.nnn;
             }
 
             0x06 => {
-                // Set register VX to nn
-                unimplemented!()
+                // Set register x to nn
+                println!("Set register #{} to: #{}", i.x, i.nn);
+                self.registers[(i.x) as usize] = i.nn;
             }
 
             0x07 => {
-                // Add value nn to register VX
-                unimplemented!()
+                // Add value nn to register x
+                println!("Add value #{} to register #{}", i.nn, i.x);
+
+                self.registers[(i.x) as usize] = self.registers[(i.x) as usize].add(i.nn);
             }
 
             0x0A => {
-                // Set index register I to nnn
-                unimplemented!()
+                // Set index register to nnn
+                println!("Set index register to nnn: #{}", i.nnn);
+                self.index = i.nnn;
             }
 
             0x0D => {
-                // Draw / display
-                unimplemented!()
+                println!("Printing to screen")
             }
 
             _ => println!("Instruction not implemented"),
         }
-
-        println!("B: #{:?}", i);
     }
 
     // An instruction is two bytes. A big-endian system stores the most significant byte of a word

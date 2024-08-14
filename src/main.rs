@@ -13,5 +13,7 @@ fn main() {
 
     cpu.load_rom(rom);
 
-    cpu.execute_instruction();
+    for _ in 0..10 {
+        cpu.execute_instruction();
+    }
 }
