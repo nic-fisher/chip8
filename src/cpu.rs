@@ -2,6 +2,9 @@ use std::ops::Add;
 
 use crate::instruction::Instruction;
 
+const DISPLAY_WIDTH: u8 = 64;
+const DISPLAY_HEIGHT: u8 = 32;
+
 pub struct CPU {
     memory: [u8; 4096],
     registers: [u8; 16],
@@ -12,7 +15,7 @@ pub struct CPU {
     delay_timer: u8,
     sound_timer: u8,
     keys: [bool; 16],
-    display: [bool; 64 * 32],
+    pub display: [bool; DISPLAY_WIDTH as usize * DISPLAY_HEIGHT as usize],
 }
 
 impl CPU {
@@ -62,49 +65,108 @@ impl CPU {
 
     pub fn load_rom(&mut self, rom: Vec<u8>) {
         for (i, byte) in rom.iter().enumerate() {
+            // println!("Loading into memory location: {:#02x}", 0x200 + i);
             self.memory[0x200 + i] = *byte;
         }
+    }
+
+    pub fn get_display_pixel_index(&self, x: usize, y: usize) -> usize {
+        y as usize * DISPLAY_WIDTH as usize + x as usize
+    }
+
+    pub fn get_display_pixel(&self, index: usize) -> bool {
+        self.display[index]
+    }
+
+    pub fn set_carry_flag(&mut self, value: u8) {
+        self.registers[0xF] = value;
+    }
+
+    pub fn update_display_pixel(&mut self, index: usize, value: bool) {
+        self.display[index] = value;
     }
 
     pub fn execute_instruction(&mut self) {
         let instruction_bytes = self.fetch_instruction_bytes();
         println!("Instruction: #{:#018b}", instruction_bytes);
 
-        let i = Instruction::from_bytes(instruction_bytes);
+        let instruction = Instruction::from_bytes(instruction_bytes);
 
-        match i.op_code {
-            0x00 => match i.nn {
+        match instruction.op_code {
+            0x00 => match instruction.nn {
                 0xE0 => println!("Clear screen"),
                 _ => println!("Instruction not implemented."),
             },
 
             0x01 => {
                 // Jump to location nnn
-                println!("Jump to location: #{}", i.nnn);
-                self.pc = i.nnn;
+                println!("Jump to location: {:#02x}", instruction.nnn);
+                self.pc = instruction.nnn;
             }
 
             0x06 => {
                 // Set register x to nn
-                println!("Set register #{} to: #{}", i.x, i.nn);
-                self.registers[(i.x) as usize] = i.nn;
+                println!(
+                    "Set register {:#02x} to: {:#02x}",
+                    instruction.x, instruction.nn
+                );
+                self.registers[(instruction.x) as usize] = instruction.nn;
             }
 
             0x07 => {
                 // Add value nn to register x
-                println!("Add value #{} to register #{}", i.nn, i.x);
+                println!(
+                    "Add value {:#02x} to register {:#02x}",
+                    instruction.nn, instruction.x
+                );
 
-                self.registers[(i.x) as usize] = self.registers[(i.x) as usize].add(i.nn);
+                self.registers[(instruction.x) as usize] =
+                    self.registers[(instruction.x) as usize].add(instruction.nn);
             }
 
             0x0A => {
                 // Set index register to nnn
-                println!("Set index register to nnn: #{}", i.nnn);
-                self.index = i.nnn;
+                println!("Set index register to nnn: {:#02x}", instruction.nnn);
+                self.index = instruction.nnn;
             }
 
             0x0D => {
-                println!("Printing to screen")
+                // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
+                // The sprite memory location is stored in the index register. The display location is updated
+                // with the result of the current pixel XOR'd with the new pixel value stored in the sprite.
+                // The carry flag register (VF) is set to 1 if any screen pixels are flipped from set to unset when the
+                // sprite is drawn.
+
+                // Wrap position
+                let x_position = self.registers[(instruction.x) as usize] % DISPLAY_WIDTH as u8;
+                let y_position = self.registers[(instruction.y) as usize] % DISPLAY_HEIGHT as u8;
+                self.set_carry_flag(0);
+                let mut collision = false;
+
+                for row in 0..instruction.n {
+                    let sprite_byte = self.memory[self.index as usize + row as usize];
+                    let y = y_position + row;
+
+                    for col in 0..8 {
+                        let x = x_position + col;
+                        let current_pixel_index =
+                            self.get_display_pixel_index(x as usize, y as usize);
+                        let current_pixel = self.get_display_pixel(current_pixel_index);
+                        // Example of the below:
+                        // sprite_byte = 0011 1000
+                        // compare_value = 1000 0000 (1 shifted to the left 7 - col)
+                        // 0011 1000 & 1000 0000 = 0000 0000
+                        let new_pixel = (sprite_byte & (1 << (7 - col))) != 0;
+                        self.update_display_pixel(current_pixel_index, current_pixel ^ new_pixel);
+                        collision = collision || (current_pixel && new_pixel);
+                    }
+                }
+
+                if collision {
+                    self.set_carry_flag(1);
+                } else {
+                    self.set_carry_flag(0);
+                }
             }
 
             _ => println!("Instruction not implemented"),
