@@ -1,79 +1,62 @@
 use crate::cpu::CPU;
-use pixels::{Pixels, SurfaceTexture};
+use crate::display::Display;
+use std::thread;
+use std::time::{Duration, Instant};
 use std::{env, fs};
-use winit::dpi::LogicalSize;
-use winit::event::VirtualKeyCode;
+use winit::event::{ElementState, Event, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::WindowBuilder;
-use winit_input_helper::WinitInputHelper;
 
 mod cpu;
+mod display;
 mod instruction;
+mod keyboard;
 
-const WIDTH: u32 = 640;
-const HEIGHT: u32 = 320;
+const CYCLES_PER_SECOND: f64 = 60.0;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let file_path = &args[1];
-
-    let event_loop = EventLoop::new();
-    let mut input = WinitInputHelper::new();
-    let window = {
-        let size = LogicalSize::new(WIDTH as f64, HEIGHT as f64);
-        WindowBuilder::new()
-            .with_title("Hello Pixels")
-            .with_resizable(false)
-            .with_inner_size(size)
-            .with_min_inner_size(size)
-            .build(&event_loop)
-            .unwrap()
-    };
-
-    let mut pixels = {
-        let window_size = window.inner_size();
-        let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        Pixels::new(WIDTH, HEIGHT, surface_texture).unwrap()
-    };
-
     let rom: Vec<u8> = fs::read(file_path).expect("Failed to read rom file");
     let mut cpu = CPU::new();
 
     cpu.load_rom(rom);
 
-    for _ in 0..50 {
-        cpu.execute_instruction();
-    }
+    let event_loop = EventLoop::new();
+    let mut display = Display::new(&event_loop);
+
+    // Duration of one cycle (60 FPS)
+    let target_cycle_duration = Duration::from_secs_f64(1.0 / CYCLES_PER_SECOND);
 
     event_loop.run(move |event, _, control_flow| {
-        // Handle input events
-        if input.update(&event) {
-            // Close events
-            if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
-                *control_flow = ControlFlow::Exit;
-                return;
-            }
+        let frame_start = Instant::now();
+        cpu.execute_instruction();
 
-            if input.key_pressed(VirtualKeyCode::A) || input.quit() {
-                // Each pixel is represented by 4 bytes in the frame buffer: R, G, B, and A.
-                println!("Drawing to screen");
-                let width = WIDTH as usize;
-                let frame = pixels.frame_mut();
+        match event {
+            Event::WindowEvent { event, .. } => match event {
+                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                WindowEvent::KeyboardInput { input, .. } => match input.virtual_keycode {
+                    Some(VirtualKeyCode::Escape) => *control_flow = ControlFlow::Exit,
+                    virtual_keycode => {
+                        if let Some(key_index) = keyboard::key_code_to_index(virtual_keycode) {
+                            if input.state == ElementState::Pressed {
+                                cpu.key_press(key_index);
+                            } else {
+                                cpu.key_release(key_index);
+                            }
+                        }
+                    }
+                },
+                _ => (),
+            },
+            _ => (),
+        };
 
-                for (i, pixel) in frame.chunks_exact_mut(4).enumerate() {
-                    let x = i % width / 10;
-                    let y = i / width / 10;
+        display.draw(&cpu);
 
-                    let display_pixel_index = cpu.get_display_pixel_index(x, y);
-                    let pixel_enabled = cpu.get_display_pixel(display_pixel_index);
-
-                    let rgba = if pixel_enabled { [0xFF; 4] } else { [0x00; 4] };
-
-                    pixel.copy_from_slice(&rgba);
-                }
-
-                pixels.render().unwrap();
-            }
+        // Calculate how long to sleep to maintain 60 FPS
+        let cycle_duration = Instant::now().duration_since(frame_start);
+        if cycle_duration < target_cycle_duration {
+            thread::sleep(target_cycle_duration - cycle_duration);
         }
     })
 }

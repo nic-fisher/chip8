@@ -65,9 +65,18 @@ impl CPU {
 
     pub fn load_rom(&mut self, rom: Vec<u8>) {
         for (i, byte) in rom.iter().enumerate() {
-            // println!("Loading into memory location: {:#02x}", 0x200 + i);
             self.memory[0x200 + i] = *byte;
         }
+    }
+
+    pub fn key_press(&mut self, key_index: usize) {
+        println!("Key press: {}", key_index);
+        self.keys[key_index] = true;
+    }
+
+    pub fn key_release(&mut self, key_index: usize) {
+        println!("Key release: {}", key_index);
+        self.keys[key_index] = false;
     }
 
     pub fn get_display_pixel_index(&self, x: usize, y: usize) -> usize {
@@ -84,6 +93,18 @@ impl CPU {
 
     pub fn update_display_pixel(&mut self, index: usize, value: bool) {
         self.display[index] = value;
+    }
+
+    // CHIP-8 has two timers. They bouth count down at 60 hertz, until they reach 0.
+    // Delay timer: This timer is intended to be used for timing events of games. Its value can be set and read.
+    // Sound timer: This timer is used for sound effects. When its value is nonzero, a beeping sound is made. Its value can only be set.
+    fn decrement_timers(&mut self) {
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+        }
+        if self.sound_timer > 0 {
+            self.sound_timer -= 1;
+        }
     }
 
     pub fn execute_instruction(&mut self) {
@@ -171,6 +192,8 @@ impl CPU {
 
             _ => println!("Instruction not implemented"),
         }
+
+        self.decrement_timers()
     }
 
     // An instruction is two bytes. A big-endian system stores the most significant byte of a word
