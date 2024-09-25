@@ -12,8 +12,8 @@ pub struct Instruction {
     pub nnn: u16,
     pub nn: u8,
     pub n: u8,
-    pub x: u8,
-    pub y: u8,
+    pub x: usize,
+    pub y: usize,
 }
 
 impl Instruction {
@@ -23,8 +23,8 @@ impl Instruction {
             nnn: bytes & 0x0FFF,
             nn: (bytes & 0x00FF) as u8,
             n: (bytes & 0x000F) as u8,
-            x: (bytes >> 8 & 0xF) as u8,
-            y: (bytes >> 4 & 0xF) as u8,
+            x: (bytes >> 8 & 0xF) as usize,
+            y: (bytes >> 4 & 0xF) as usize,
         }
     }
 }
