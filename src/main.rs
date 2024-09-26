@@ -9,11 +9,17 @@ mod display;
 mod instruction;
 mod keyboard;
 
-const CYCLES_PER_FRAME: u8 = 10;
+const CYCLES_PER_FRAME: u8 = 14;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let file_path = &args[1];
+    let cycles_per_frame = match args.get(2) {
+        Some(c) => c
+            .parse::<u8>()
+            .expect("Unable to convert cycles arg to a u8"),
+        None => CYCLES_PER_FRAME,
+    };
     let rom: Vec<u8> = fs::read(file_path).expect("Failed to read rom file");
     let mut cpu = CPU::new();
 
@@ -43,9 +49,11 @@ fn main() {
             _ => (),
         };
 
-        for _ in 0..CYCLES_PER_FRAME {
+        for _ in 0..cycles_per_frame {
             cpu.execute_instruction();
         }
+
+        cpu.decrement_timers();
 
         display.draw(&cpu);
     })

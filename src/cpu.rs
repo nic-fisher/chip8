@@ -70,12 +70,10 @@ impl CPU {
     }
 
     pub fn key_press(&mut self, key_index: usize) {
-        println!("Key press: {}", key_index);
         self.keys[key_index] = true;
     }
 
     pub fn key_release(&mut self, key_index: usize) {
-        println!("Key release: {}", key_index);
         self.keys[key_index] = false;
     }
 
@@ -98,7 +96,7 @@ impl CPU {
     // CHIP-8 has two timers. They bouth count down at 60 hertz, until they reach 0.
     // Delay timer: This timer is intended to be used for timing events of games. Its value can be set and read.
     // Sound timer: This timer is used for sound effects. When its value is nonzero, a beeping sound is made. Its value can only be set.
-    fn decrement_timers(&mut self) {
+    pub fn decrement_timers(&mut self) {
         if self.delay_timer > 0 {
             self.delay_timer -= 1;
         }
@@ -232,6 +230,13 @@ impl CPU {
                         self.set_carry_flag(shifted_bit);
                     }
                     _ => panic!("Unimplemented OP code"),
+                }
+            }
+
+            0x09 => {
+                // Skip next instruction if Vx != Vy
+                if self.registers[instruction.x] != self.registers[instruction.y] {
+                    self.pc += 2;
                 }
             }
 
@@ -390,7 +395,7 @@ impl CPU {
                         // Store registers V0 through Vx in memory starting at location I.
                         // The interpreter copies the values of registers V0 through Vx
                         // into memory, starting at the address in I.
-                        for register_index in 0..instruction.x {
+                        for register_index in 0..=instruction.x {
                             let memory_location = self.index as usize + register_index;
                             self.memory[memory_location] = self.registers[register_index];
                         }
@@ -399,7 +404,7 @@ impl CPU {
                         // Read registers V0 through Vx from memory starting at location I.
                         // The interpreter reads values from memory starting at location I
                         // into registers V0 through Vx.
-                        for register_index in 0..instruction.x {
+                        for register_index in 0..=instruction.x {
                             let memory_location = self.index as usize + register_index;
                             self.registers[register_index] = self.memory[memory_location];
                         }
@@ -409,8 +414,6 @@ impl CPU {
             }
             _ => println!("Instruction not implemented"),
         }
-
-        self.decrement_timers()
     }
 
     // An instruction is two bytes. A big-endian system stores the most significant byte of a word
