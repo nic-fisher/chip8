@@ -2,16 +2,19 @@
 
 A CHIP-8 interpreter written in Rust.
 
+<img width="636" alt="Screenshot 2024-09-26 at 3 56 12 pm" src="https://github.com/user-attachments/assets/1311ab1d-191c-458c-8cf1-81c6f0a52031">
+
 ### Usage
 
 `cargo run <rom_file> <cycles_per_frame>`
 
 `cycles_per_frame` defaults to 14.
 
-<`Esc`> to exit.
+`Esc` to exit.
 
 ### Keyboard mapping
 
+```
 Emulator     Chip8
 +-+-+-+-+    +-+-+-+-+
 |1|2|3|4|    |1|2|3|C|
@@ -19,6 +22,7 @@ Emulator     Chip8
 |A|S|D|F|    |7|8|9|E|
 |Z|X|C|V|    |A|0|B|F|
 +-+-+-+-+    +-+-+-+-+
+```
 
 ### Notes
 
