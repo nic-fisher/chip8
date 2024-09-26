@@ -15,7 +15,7 @@ A CHIP-8 interpreter written in Rust.
 ### Keyboard mapping
 
 ```
-Emulator     Chip8
+Interpreter     Chip8
 +-+-+-+-+    +-+-+-+-+
 |1|2|3|4|    |1|2|3|C|
 |Q|W|E|R|    |4|5|6|D|
@@ -30,6 +30,6 @@ The CPU cycle timing is not accurate and the sound timer is not setup.
 
 ### References
 
-https://tobiasvl.github.io/blog/write-a-chip-8-emulator/
-https://austinmorlan.com/posts/chip8_emulator/
-http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#0.1
+- https://tobiasvl.github.io/blog/write-a-chip-8-emulator
+- https://austinmorlan.com/posts/chip8_emulator
+- http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#0.1
